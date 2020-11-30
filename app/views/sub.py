@@ -307,11 +307,14 @@ def view_post(sub, pid, slug=None, comments=False, highlight=None):
 
     sub = Sub.select().where(fn.Lower(Sub.name) == sub.lower()).dicts().get()
     subInfo = misc.getSubData(sub['sid'])
-    postmeta = misc.metadata_to_dict(SubPostMetadata.select().where(SubPostMetadata.pid == pid))
 
     sticky_sort = 'top'
     if str(pid) in subInfo['sticky']:
-        sticky_sort = postmeta.get('sort', sticky_sort)
+        try:
+            sticky_sort = SubPostMetadata.select().where((SubPostMetadata.key == 'sort') &
+                                                          (SubPostMetadata.pid == pid)).get().value
+        except SubPostMetadata.DoesNotExist:
+            pass
 
     if sort is None:
         sort = sticky_sort
@@ -330,7 +333,6 @@ def view_post(sub, pid, slug=None, comments=False, highlight=None):
     except UserSaved.DoesNotExist:
         is_saved = False
 
-    stuck_comment = None
     if not comments:
         comments = SubPostComment.select(SubPostComment.cid, SubPostComment.parentcid).where(SubPostComment.pid == post['pid'])
         if sort == "new":
@@ -343,9 +345,6 @@ def view_post(sub, pid, slug=None, comments=False, highlight=None):
             comments = []
         else:
             comments = misc.get_comment_tree(comments, uid=current_user.uid, include_history=include_history)
-            stuck_comment = postmeta.get('sticky_cid')
-            if stuck_comment is not None:
-                stuck_comment = next((com for com in comments if com['cid'] == stuck_comment))
 
     if config.site.edit_history and include_history:
         try:
@@ -381,10 +380,10 @@ def view_post(sub, pid, slug=None, comments=False, highlight=None):
     if post['userstatus'] == 10 and post['deleted'] == 1:
         post['visibility'] = 'none'
 
-    postmeta = misc.metadata_to_dict(SubPostMetadata.select().where(SubPostMetadata.pid == pid))
-
     pollData = {'has_voted': False}
+    postmeta = {}
     if post['ptype'] == 3:
+        postmeta = misc.metadata_to_dict(SubPostMetadata.select().where(SubPostMetadata.pid == pid))
         # poll. grab options and votes.
         options = SubPostPollOption.select(SubPostPollOption.id, SubPostPollOption.text, fn.Count(SubPostPollVote.id).alias('votecount'))
         options = options.join(SubPostPollVote, JOIN.LEFT_OUTER, on=(SubPostPollVote.vid == SubPostPollOption.id))
@@ -417,7 +416,7 @@ def view_post(sub, pid, slug=None, comments=False, highlight=None):
                                                         'comments': comments,'subMods': subMods, 'highlight': highlight,
                                                         'content_history': content_history, 'title_history': title_history,
                                                         'open_reports': open_reports, 'sort': sort,
-                                                        'sticky_sort': sticky_sort, 'stuck_comment': stuck_comment})
+                                                        'sticky_sort': sticky_sort})
 
 
 @blueprint.route("/<sub>/<int:pid>/_/<cid>", defaults={'slug': '_'})

@@ -1,6 +1,5 @@
 // Post page-related code.
 import TextConfirm from './utils/TextConfirm';
-import InlinePrompt from './utils/InlinePrompt';
 import Icons from './Icon';
 import u from './Util';
 import initializeEditor from './Editor';
@@ -39,14 +38,7 @@ u.addEventForChild(document, 'click', '.distinguish', function (e, qelem) {
             })
         }
     if(qelem.text == _('distinguish') && document.getElementById('pagefoot-admin').getAttribute('data-value') == 'True') {
-        InlinePrompt({
-            text: _("distinguish as:"),
-            options: [
-                [_("admin"), () => distinguish(true)],
-                [_("mod"), () => distinguish(false)],
-            ],
-            elem: qelem
-        });
+        TextConfirm(qelem, function() {distinguish(true)}, _("distinguish as admin?"), function() {distinguish(false)})
     } else {
         distinguish(false)
     }
@@ -166,19 +158,6 @@ u.addEventForChild(document, 'click', '.stick-post', function (e, qelem) {
     });
 });
 
-// Stick comment
-u.addEventForChild(document, 'click', '.stick-comment', function (e, qelem) {
-    u.post('/do/stick_comment/' + qelem.getAttribute('data-cid'),
-           {post: document.getElementById('postinfo').getAttribute('pid')},
-           function (data) {
-               if (data.status != "ok") {
-                   qelem.innerHTML = data.error;
-               } else {
-                   document.location.reload();
-               }
-           });
-})
-
 // Sticky post default comment sort
 u.addEventForChild(document, 'click', '.sort-comments', function (e, qelem) {
     const parent = qelem.parentNode.parentNode;
@@ -191,23 +170,6 @@ u.addEventForChild(document, 'click', '.sort-comments', function (e, qelem) {
                 } else {
                     tg.innerHTML = _('Done');
                     document.location.replace(data.redirect);
-                }
-            });
-    });
-});
-
-// Lock comments on post.
-u.addEventForChild(document, 'click', '.lock-comments', function (e, qelem) {
-    const parent = qelem.parentNode.parentNode;
-    const pid = qelem.parentNode.parentNode.getAttribute('data-pid'), tg = e.currentTarget;
-    TextConfirm(qelem, function () {
-        u.post('/do/lock_comments/' + pid, {post: document.getElementById('postinfo').getAttribute('pid')},
-            function (data) {
-                if (data.status != "ok") {
-                    alert(data.error);
-                } else {
-                    tg.innerHTML = _('Done');
-                    document.location.reload();
                 }
             });
     });
